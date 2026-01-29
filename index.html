@@ -255,12 +255,12 @@
     <script>
         const SUPABASE_URL = 'https://tiyqklfbwerikuxiiwly.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpeXFrbGZid2VyaWt1eGlpd2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NDkxNTcsImV4cCI6MjA4NTIyNTE1N30.4o_BtOpaQOPNx6hNko-cRPzWt6we0nQRuQ9vOSonf9M';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let items = [];
 
         async function loadItems() {
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('shopping_items')
                 .select('*')
                 .order('created_at', { ascending: true });
@@ -312,7 +312,7 @@
             const text = input.value.trim();
 
             if (text) {
-                const { data, error } = await supabase
+                const { data, error } = await db
                     .from('shopping_items')
                     .insert({ text, checked: false })
                     .select();
@@ -329,7 +329,7 @@
             const item = items.find(i => i.id === id);
             if (!item) return;
             const newChecked = !item.checked;
-            const { error } = await supabase
+            const { error } = await db
                 .from('shopping_items')
                 .update({ checked: newChecked })
                 .eq('id', id);
@@ -340,7 +340,7 @@
         }
 
         async function deleteItem(id) {
-            const { error } = await supabase
+            const { error } = await db
                 .from('shopping_items')
                 .delete()
                 .eq('id', id);
@@ -352,7 +352,7 @@
 
         async function clearAll() {
             if (confirm('모든 아이템을 삭제하시겠습니까?')) {
-                const { error } = await supabase
+                const { error } = await db
                     .from('shopping_items')
                     .delete()
                     .neq('id', 0);
