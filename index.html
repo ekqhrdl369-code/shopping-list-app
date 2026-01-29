@@ -251,11 +251,23 @@
         <button class="clear-all" id="clearAllBtn" onclick="clearAll()">전체 삭제</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        let items = JSON.parse(localStorage.getItem('shoppingList')) || [];
+        const SUPABASE_URL = 'https://tiyqklfbwerikuxiiwly.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpeXFrbGZid2VyaWt1eGlpd2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NDkxNTcsImV4cCI6MjA4NTIyNTE1N30.4o_BtOpaQOPNx6hNko-cRPzWt6we0nQRuQ9vOSonf9M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function saveItems() {
-            localStorage.setItem('shoppingList', JSON.stringify(items));
+        let items = [];
+
+        async function loadItems() {
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .select('*')
+                .order('created_at', { ascending: true });
+            if (!error) {
+                items = data;
+            }
+            renderList();
         }
 
         function renderList() {
@@ -275,11 +287,11 @@
                 `;
                 clearAllBtn.disabled = true;
             } else {
-                list.innerHTML = items.map((item, index) => `
-                    <li class="shopping-item ${item.checked ? 'checked' : ''}" data-index="${index}">
-                        <div class="checkbox" onclick="toggleItem(${index})"></div>
+                list.innerHTML = items.map(item => `
+                    <li class="shopping-item ${item.checked ? 'checked' : ''}" data-id="${item.id}">
+                        <div class="checkbox" onclick="toggleItem(${item.id})"></div>
                         <span class="item-text">${escapeHtml(item.text)}</span>
-                        <button class="delete-btn" onclick="deleteItem(${index})">×</button>
+                        <button class="delete-btn" onclick="deleteItem(${item.id})">×</button>
                     </li>
                 `).join('');
                 clearAllBtn.disabled = false;
@@ -295,36 +307,59 @@
             return div.innerHTML;
         }
 
-        function addItem() {
+        async function addItem() {
             const input = document.getElementById('itemInput');
             const text = input.value.trim();
 
             if (text) {
-                items.push({ text, checked: false });
-                saveItems();
-                renderList();
+                const { data, error } = await supabase
+                    .from('shopping_items')
+                    .insert({ text, checked: false })
+                    .select();
+                if (!error && data) {
+                    items.push(data[0]);
+                    renderList();
+                }
                 input.value = '';
                 input.focus();
             }
         }
 
-        function toggleItem(index) {
-            items[index].checked = !items[index].checked;
-            saveItems();
-            renderList();
-        }
-
-        function deleteItem(index) {
-            items.splice(index, 1);
-            saveItems();
-            renderList();
-        }
-
-        function clearAll() {
-            if (confirm('모든 아이템을 삭제하시겠습니까?')) {
-                items = [];
-                saveItems();
+        async function toggleItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            const newChecked = !item.checked;
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({ checked: newChecked })
+                .eq('id', id);
+            if (!error) {
+                item.checked = newChecked;
                 renderList();
+            }
+        }
+
+        async function deleteItem(id) {
+            const { error } = await supabase
+                .from('shopping_items')
+                .delete()
+                .eq('id', id);
+            if (!error) {
+                items = items.filter(i => i.id !== id);
+                renderList();
+            }
+        }
+
+        async function clearAll() {
+            if (confirm('모든 아이템을 삭제하시겠습니까?')) {
+                const { error } = await supabase
+                    .from('shopping_items')
+                    .delete()
+                    .neq('id', 0);
+                if (!error) {
+                    items = [];
+                    renderList();
+                }
             }
         }
 
@@ -335,8 +370,8 @@
             }
         });
 
-        // 초기 렌더링
-        renderList();
+        // 초기 로딩
+        loadItems();
     </script>
 </body>
 </html>
